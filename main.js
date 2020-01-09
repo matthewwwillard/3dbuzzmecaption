@@ -11,8 +11,6 @@ http(url).then(
         const $ = cheerio.load(html);
         const group = $('.c-series').nextAll();
 
-        console.log(group.length);
-
         if(!fs.pathExists('./zips'))
             fs.mkdirSync('./zips');
 
@@ -22,32 +20,12 @@ http(url).then(
         for(let i = 0; i < group.length; i++)
         {
             const item = $(group[i]).find('ol');
-            
-            console.log(item.children().length);
-
+    
             item.children().each(function(){
-                console.log($(this).find('a').attr('href'));
+    
                 urlsToGet.push($(this).find('a').attr('href'));
             })
-
-            // for(let x = 0; x < item.children().length; x++)
-            // {
-                
-            //     const child = $(item.children()[x].find('a'));
-            //     console.log(child.text());
-            // }
-
-            // // console.log(item.text());
-
-            // continue;
-
-            // const url = item.children().find('a').attr('href');
-            // if(url == null)
-            //     continue;
-           
         }
-        
-        console.log(urlsToGet.length);
         
         for(let i = 0; i < urlsToGet.length; i++)
         {
@@ -79,9 +57,17 @@ function attemptZipGrab(name, url)
     const maxAttempts = 10;
     return new Promise(async (res, rej)=>{
         let attempt = 0;
-        let success = false;
-        while(!success)
+        let stopRunning = false;
+
+        if(fs.existsSync('./zips/'+name))
         {
+            console.log(`---- ${name} has already been collected ----`);
+            return res();
+        }
+
+        while(!stopRunning)
+        {
+    
             console.log(`Getting ${name} attempt ${attempt} of ${maxAttempts}\n`);
 
             await http.get(url, {responseType:'arraybuffer'}).then((response)=>
@@ -90,17 +76,17 @@ function attemptZipGrab(name, url)
 
                     console.log(`----- GOT ${name} -------`)
 
-                    success = true;
+                    stopRunning = true;
                     res();
                 }
             ).catch(
                 async (error)=>{
-                    console.log(`Attempt ${attempt} has failed.\n`);
                     await sleep(1000);
                     attempt++;
                     if(attempt >= maxAttempts)
                     {
-                        success = false;
+                        console.log(`Attempt for ${name} has failed.\n`);
+                        stopRunning = true;
                     }
                 }
             )
